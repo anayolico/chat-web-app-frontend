@@ -201,7 +201,7 @@ function ChatConversationPage() {
       });
 
       socket.emit(
-        'sendMessage',
+        'send_message',
         {
           chatId: pendingEntry.chatId,
           receiverId: pendingEntry.receiverId,
@@ -388,13 +388,17 @@ function ChatConversationPage() {
     };
 
     socket.on('receiveMessage', handleReceiveMessage);
+    socket.on('receive_message', handleReceiveMessage);
     socket.on('messageStatusUpdated', handleMessageStatusUpdated);
+    socket.on('message_status_updated', handleMessageStatusUpdated);
     socket.on('messageUpdated', handleMessageUpdated);
     socket.on('messageRemoved', handleMessageRemoved);
 
     return () => {
       socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('receive_message', handleReceiveMessage);
       socket.off('messageStatusUpdated', handleMessageStatusUpdated);
+      socket.off('message_status_updated', handleMessageStatusUpdated);
       socket.off('messageUpdated', handleMessageUpdated);
       socket.off('messageRemoved', handleMessageRemoved);
     };
@@ -716,7 +720,7 @@ function ChatConversationPage() {
         disabled={!chatId || !chatUser?.id}
         isUploading={isUploading}
         onSendMedia={handleSendMediaMessage}
-        onTypingStart={() => emit('typing:start', { partnerId: chatUser?.id })}
+        onTypingStart={() => emit('typing', { partnerId: chatUser?.id })}
         onTypingStop={() => emit('typing:stop', { partnerId: chatUser?.id })}
         onSendText={handleSendMessage}
       />

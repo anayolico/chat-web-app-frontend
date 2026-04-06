@@ -16,6 +16,8 @@ export function RealtimeProvider({ children }) {
   const [presenceByUser, setPresenceByUser] = useState({});
   // State for tracking typing indicators by user
   const [typingByUser, setTypingByUser] = useState({});
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const [socketError, setSocketError] = useState('');
   const typingTimeoutsRef = useRef({});
 
   // Effect to manage Socket.IO connection based on authentication
@@ -25,6 +27,8 @@ export function RealtimeProvider({ children }) {
       disconnectSocket();
       setPresenceByUser({});
       setTypingByUser({});
+      setIsSocketConnected(false);
+      setSocketError('');
       return undefined;
     }
 
@@ -67,16 +71,43 @@ export function RealtimeProvider({ children }) {
       }
     };
 
+    const handleConnect = () => {
+      setIsSocketConnected(true);
+      setSocketError('');
+    };
+
+    const handleDisconnect = (reason) => {
+      setIsSocketConnected(false);
+      setSocketError(reason || '');
+    };
+
+    const handleConnectError = (connectionError) => {
+      setIsSocketConnected(false);
+      setSocketError(connectionError?.message || 'Socket connection failed');
+    };
+
     // Register event listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
     socket.on('presence:update', handlePresenceUpdate);
+    socket.on('user_online', handlePresenceUpdate);
+    socket.on('user_offline', handlePresenceUpdate);
     socket.on('typing:update', handleTypingUpdate);
+    socket.on('typing', handleTypingUpdate);
 
     // Cleanup function: remove listeners and disconnect
     return () => {
       Object.values(typingTimeoutsRef.current).forEach((timeoutId) => clearTimeout(timeoutId));
       typingTimeoutsRef.current = {};
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
       socket.off('presence:update', handlePresenceUpdate);
+      socket.off('user_online', handlePresenceUpdate);
+      socket.off('user_offline', handlePresenceUpdate);
       socket.off('typing:update', handleTypingUpdate);
+      socket.off('typing', handleTypingUpdate);
       disconnectSocket();
     };
   }, [auth?.token, isAuthenticated]);
@@ -85,6 +116,8 @@ export function RealtimeProvider({ children }) {
   const value = useMemo(
     () => ({
       presenceByUser,
+      isSocketConnected,
+      socketError,
       typingByUser,
       // Function to emit events to the server
       emit: (eventName, payload) => {
@@ -97,7 +130,7 @@ export function RealtimeProvider({ children }) {
         socket.emit(eventName, payload);
       }
     }),
-    [presenceByUser, typingByUser]
+    [isSocketConnected, presenceByUser, socketError, typingByUser]
   );
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;

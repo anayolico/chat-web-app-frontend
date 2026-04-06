@@ -76,9 +76,11 @@ function ChatShell({ children }) {
     };
 
     socket.on('receiveMessage', handleReceiveMessage);
+    socket.on('receive_message', handleReceiveMessage);
 
     return () => {
       socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('receive_message', handleReceiveMessage);
     };
   }, [accessChat, auth?.user?.id, updateChatFromMessage]);
 

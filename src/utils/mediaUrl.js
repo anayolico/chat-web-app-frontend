@@ -1,4 +1,5 @@
 const trimTrailingSlash = (value = '') => value.replace(/\/+$/, '');
+const DEFAULT_BACKEND_PUBLIC_URL = 'https://chat-web-app-backend-f56m.onrender.com';
 
 const resolveApiBaseUrl = () => {
   const configuredBaseUrl = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || '');
@@ -10,6 +11,10 @@ const resolveApiBaseUrl = () => {
 
   if (configuredBackendUrl) {
     return `${configuredBackendUrl}/api`;
+  }
+
+  if (import.meta.env.PROD) {
+    return `${DEFAULT_BACKEND_PUBLIC_URL}/api`;
   }
 
   if (typeof window !== 'undefined') {
@@ -48,3 +53,4 @@ export const resolveMediaUrl = (value = '') => {
 };
 
 export const resolveApiBaseUrlForClient = resolveApiBaseUrl;
+export const resolveBackendOriginForClient = resolveBackendOrigin;
