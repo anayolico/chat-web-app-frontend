@@ -30,6 +30,7 @@ export function AuthProvider({ children }) {
         const response = await authApi.getCurrentUser();
         const nextAuth = {
           token: auth.token,
+          refreshToken: auth.refreshToken || '',
           user: response.data.data.user
         };
 
@@ -55,8 +56,13 @@ export function AuthProvider({ children }) {
       isLoading,
       // Login function: sets auth state and persists to storage
       login: (payload) => {
-        setAuth(payload);
-        persistAuth(payload);
+        const nextAuth = {
+          token: payload?.token || '',
+          refreshToken: payload?.refreshToken || '',
+          user: payload?.user || null
+        };
+        setAuth(nextAuth);
+        persistAuth(nextAuth);
       },
       // Logout function: clears auth state and removes from storage
       logout: () => {

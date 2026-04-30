@@ -12,7 +12,13 @@ const ChatContext = createContext(null);
 
 // Helper function to sort chats by most recently updated
 const sortChats = (items) =>
-  [...items].sort((left, right) => new Date(right.updatedAt || 0) - new Date(left.updatedAt || 0));
+  [...items].sort((left, right) => {
+    if (Boolean(left.isPinned) !== Boolean(right.isPinned)) {
+      return left.isPinned ? -1 : 1;
+    }
+
+    return new Date(right.updatedAt || 0) - new Date(left.updatedAt || 0);
+  });
 
 export function ChatProvider({ children }) {
   // State for all available users
@@ -59,6 +65,23 @@ export function ChatProvider({ children }) {
     return chat;
   }, []);
 
+  // Function to create a group chat
+  const createGroupChat = useCallback(async (name, memberIds) => {
+    const response = await chatApi.createGroup(name, memberIds);
+    const chat = response.data.data.chat;
+
+    // Update chats list with the new group chat at the top
+    setChats((current) => {
+      const next = current.filter((item) => item.id !== chat.id);
+      return sortChats([chat, ...next]);
+    });
+
+    // Reload chat data to ensure consistency
+    await loadChatData();
+
+    return chat;
+  }, [loadChatData]);
+
   // Function to add or update a chat in the list
   const upsertChat = useCallback((chat) => {
     if (!chat?.id) {
@@ -71,11 +94,21 @@ export function ChatProvider({ children }) {
     });
   }, []);
 
+  const removeChat = useCallback((chatId) => {
+    if (!chatId) {
+      return;
+    }
+
+    setChats((current) => current.filter((chat) => chat.id !== chatId));
+  }, []);
+
   // Function to update a chat's last message and timestamp when a new message arrives
-  const updateChatFromMessage = useCallback((chatId, message) => {
+  const updateChatFromMessage = useCallback((chatId, message, options = {}) => {
     if (!chatId || !message) {
       return;
     }
+    const incrementUnread = Boolean(options.incrementUnread);
+    const resetUnread = Boolean(options.resetUnread);
 
     setChats((current) =>
       sortChats(
@@ -91,10 +124,32 @@ export function ChatProvider({ children }) {
                   fileName: message.fileName || '',
                   createdAt: message.createdAt
                 },
-                updatedAt: message.createdAt
+                updatedAt: message.createdAt,
+                unreadCount: resetUnread
+                  ? 0
+                  : incrementUnread
+                  ? (chat.unreadCount || 0) + 1
+                  : chat.unreadCount || 0
               }
             : chat
         )
+      )
+    );
+  }, []);
+
+  const markChatRead = useCallback((chatId) => {
+    if (!chatId) {
+      return;
+    }
+
+    setChats((current) =>
+      current.map((chat) =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              unreadCount: 0
+            }
+          : chat
       )
     );
   }, []);
@@ -108,10 +163,13 @@ export function ChatProvider({ children }) {
       loadError,
       reloadChatData: loadChatData,
       accessChat,
+      createGroupChat,
       upsertChat,
-      updateChatFromMessage
+      removeChat,
+      updateChatFromMessage,
+      markChatRead
     }),
-    [accessChat, chats, isLoading, loadChatData, loadError, updateChatFromMessage, upsertChat, users]
+    [accessChat, chats, createGroupChat, isLoading, loadChatData, loadError, markChatRead, removeChat, updateChatFromMessage, upsertChat, users]
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

@@ -34,6 +34,10 @@ export function RealtimeProvider({ children }) {
 
     // Connect socket with auth token
     const socket = connectSocket(auth.token);
+    const canUseBrowserNotifications =
+      typeof window !== 'undefined' &&
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'granted';
 
     // Handler for presence updates (user online/offline)
     const handlePresenceUpdate = (payload) => {
@@ -86,6 +90,26 @@ export function RealtimeProvider({ children }) {
       setSocketError(connectionError?.message || 'Socket connection failed');
     };
 
+    const handleIncomingMessageNotification = (payload) => {
+      if (!canUseBrowserNotifications || !payload?.senderId || payload.senderId === auth?.user?.id) {
+        return;
+      }
+
+      if (document.visibilityState === 'visible') {
+        return;
+      }
+
+      const notification = new Notification('New message', {
+        body: payload.content || 'You received a new message',
+        tag: `chat-message-${payload.id || Date.now()}`
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    };
+
     // Register event listeners
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
@@ -95,6 +119,8 @@ export function RealtimeProvider({ children }) {
     socket.on('user_offline', handlePresenceUpdate);
     socket.on('typing:update', handleTypingUpdate);
     socket.on('typing', handleTypingUpdate);
+    socket.on('receiveMessage', handleIncomingMessageNotification);
+    socket.on('receive_message', handleIncomingMessageNotification);
 
     // Cleanup function: remove listeners and disconnect
     return () => {
@@ -108,9 +134,21 @@ export function RealtimeProvider({ children }) {
       socket.off('user_offline', handlePresenceUpdate);
       socket.off('typing:update', handleTypingUpdate);
       socket.off('typing', handleTypingUpdate);
+      socket.off('receiveMessage', handleIncomingMessageNotification);
+      socket.off('receive_message', handleIncomingMessageNotification);
       disconnectSocket();
     };
-  }, [auth?.token, isAuthenticated]);
+  }, [auth?.token, auth?.user?.id, isAuthenticated]);
+
+  useEffect(() => {
+    if (typeof Notification === 'undefined') {
+      return;
+    }
+
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
 
   // Memoized context value
   const value = useMemo(

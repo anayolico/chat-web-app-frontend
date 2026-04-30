@@ -63,7 +63,16 @@ const fileTypes = {
 
 const emojis = ['😀', '😂', '❤️', '👍', '😊', '😢', '😮', '🙌', '🔥', '✨', '🎉', '🥳', '🤩', '🙏', '💪', '🤝', '😎', '💖', '🌟', '🥰', '😅', '😇', '🤓'];
 
-function MessageComposer({ onSendText, onSendMedia, disabled, isUploading, onTypingStart, onTypingStop }) {
+function MessageComposer({
+  disabled,
+  isUploading,
+  onCancelReply,
+  onSendMedia,
+  onSendText,
+  onTypingStart,
+  onTypingStop,
+  replyTo
+}) {
   const [draft, setDraft] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -343,6 +352,19 @@ function MessageComposer({ onSendText, onSendMedia, disabled, isUploading, onTyp
         type="file"
       />
       <div className="space-y-3">
+        {replyTo ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Replying</p>
+                <p className="mt-1 truncate">{replyTo.content || replyTo.fileName || `${replyTo.type} message`}</p>
+              </div>
+              <button className="secondary-button px-3 py-1.5 text-xs" onClick={onCancelReply} type="button">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="relative">
           <button
             className="secondary-button px-3 py-2 text-sm transition-colors"

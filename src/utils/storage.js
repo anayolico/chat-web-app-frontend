@@ -26,6 +26,23 @@ export function removeStoredAuth() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+export function updateStoredAuthTokens(tokens) {
+  const current = getStoredAuth();
+
+  if (!current) {
+    return null;
+  }
+
+  const nextAuth = {
+    ...current,
+    token: tokens?.token || current.token || '',
+    refreshToken: tokens?.refreshToken || current.refreshToken || ''
+  };
+
+  persistAuth(nextAuth);
+  return nextAuth;
+}
+
 export function getStoredPendingMessages(userId) {
   if (!userId) {
     return [];

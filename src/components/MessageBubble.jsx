@@ -140,11 +140,15 @@ function MessageActionsMenu({
   canDeleteForEveryone,
   canDeleteForMe,
   canEdit,
+  isPinned,
   isOwn,
   menuRef,
   onDeleteForEveryone,
   onDeleteForMe,
   onEdit,
+  onForward,
+  onPin,
+  onReply,
 }) {
   return (
     <div
@@ -159,6 +163,15 @@ function MessageActionsMenu({
           Edit
         </button>
       ) : null}
+      <button className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/10" onClick={onReply} type="button">
+        Reply
+      </button>
+      <button className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/10" onClick={onForward} type="button">
+        Forward
+      </button>
+      <button className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/10" onClick={onPin} type="button">
+        {isPinned ? 'Unpin message' : 'Pin message'}
+      </button>
       {canDeleteForMe ? (
         <button className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/10" onClick={onDeleteForMe} type="button">
           Delete for me
@@ -205,7 +218,17 @@ function MessageStatusIcon({ status }) {
   );
 }
 
-function MessageBubble({ message, isOwn, onDeleteMessage, onEditMessage, onReaction }) {
+function MessageBubble({
+  message,
+  isOwn,
+  onDeleteMessage,
+  onEditMessage,
+  onForwardMessage,
+  onReaction,
+  onReplyMessage,
+  onRetryMediaUpload,
+  onTogglePin
+}) {
   const [previewMedia, setPreviewMedia] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -513,6 +536,16 @@ function MessageBubble({ message, isOwn, onDeleteMessage, onEditMessage, onReact
   const canEdit = isOwn && message.type === 'text' && !message.isDeleted;
   const canDeleteForEveryone = isOwn && !message.isDeleted;
   const canDeleteForMe = !message.isDeleted;
+  const canOpenMenu = !message.uploadFailed;
+  const reactionSummary = (message.reactions || []).reduce((accumulator, reaction) => {
+    if (!reaction?.emoji) {
+      return accumulator;
+    }
+
+    accumulator[reaction.emoji] = (accumulator[reaction.emoji] || 0) + 1;
+    return accumulator;
+  }, {});
+  const reactionEntries = Object.entries(reactionSummary);
 
   return (
     <>
@@ -524,7 +557,23 @@ function MessageBubble({ message, isOwn, onDeleteMessage, onEditMessage, onReact
               : 'rounded-bl-md border border-white/10 bg-white/5 text-slate-100'
           }`}
         >
-          {(canEdit || canDeleteForMe || canDeleteForEveryone) ? (
+          {message.isPinned ? (
+            <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] ${isOwn ? 'text-slate-900/70' : 'text-accent'}`}>
+              Pinned
+            </div>
+          ) : null}
+          {message.forwardedFrom?.messageId ? (
+            <div className={`mb-2 text-xs ${isOwn ? 'text-slate-900/75' : 'text-slate-300'}`}>
+              Forwarded{message.forwardedFrom.name ? ` by ${message.forwardedFrom.name}` : ''}
+            </div>
+          ) : null}
+          {message.replyTo?.messageId ? (
+            <div className={`mb-3 rounded-2xl border px-3 py-2 text-xs ${isOwn ? 'border-slate-900/10 bg-white/30 text-slate-900/80' : 'border-white/10 bg-slate-950/20 text-slate-300'}`}>
+              <p className="font-semibold">{message.replyTo.type === 'text' ? 'Reply' : `${message.replyTo.type} reply`}</p>
+              <p className="mt-1 truncate">{message.replyTo.content || message.replyTo.fileName || 'Attachment'}</p>
+            </div>
+          ) : null}
+          {canOpenMenu ? (
             <div className={`absolute top-3 z-10 ${isOwn ? 'left-3' : 'right-3'}`}>
               <button
                 aria-label="Message actions"
@@ -543,17 +592,46 @@ function MessageBubble({ message, isOwn, onDeleteMessage, onEditMessage, onReact
                   canDeleteForEveryone={canDeleteForEveryone}
                   canDeleteForMe={canDeleteForMe}
                   canEdit={canEdit}
+                  isPinned={Boolean(message.isPinned)}
                   isOwn={isOwn}
                   menuRef={menuRef}
                   onDeleteForEveryone={closeMenuThen(() => onDeleteMessage?.(message, 'everyone'))}
                   onDeleteForMe={closeMenuThen(() => onDeleteMessage?.(message, 'me'))}
                   onEdit={closeMenuThen(() => onEditMessage?.(message))}
+                  onForward={closeMenuThen(() => onForwardMessage?.(message))}
+                  onPin={closeMenuThen(() => onTogglePin?.(message))}
+                  onReply={closeMenuThen(() => onReplyMessage?.(message))}
                 />
               ) : null}
             </div>
           ) : null}
 
-          <div className={canEdit || canDeleteForMe || canDeleteForEveryone ? 'pt-9' : ''}>{renderMessageBody()}</div>
+          <div className={canOpenMenu ? 'pt-9' : ''}>{renderMessageBody()}</div>
+          {isOwn && message.uploadFailed ? (
+            <div className="mt-2">
+              <button
+                className="rounded-full border border-slate-900/25 bg-slate-900/10 px-3 py-1 text-xs font-semibold text-slate-900 transition hover:bg-slate-900/15"
+                onClick={() => onRetryMediaUpload?.(message)}
+                type="button"
+              >
+                Retry upload
+              </button>
+            </div>
+          ) : null}
+          {reactionEntries.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {reactionEntries.map(([emoji, count]) => (
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-xs ${
+                    isOwn ? 'border-slate-900/20 bg-slate-900/10 text-slate-900' : 'border-white/15 bg-white/10 text-slate-100'
+                  }`}
+                  key={emoji}
+                >
+                  {emoji} {count}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className={`mt-2 flex items-center justify-between gap-2 text-[11px] ${isOwn ? 'text-slate-900/70' : 'text-slate-400'}`}>
             <div className="flex items-center gap-2">
               <span>{formatMessageTime(message.createdAt)}</span>
@@ -561,14 +639,19 @@ function MessageBubble({ message, isOwn, onDeleteMessage, onEditMessage, onReact
             </div>
             <div className="flex items-center gap-2">
               {!isOwn && (
-                <button
-                  aria-label="React with heart"
-                  className="text-slate-400 transition-colors hover:text-accent"
-                  onClick={() => onReaction?.(message.id, 'heart')}
-                  type="button"
-                >
-                  Love
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {['❤', '👍', '😂'].map((emoji) => (
+                    <button
+                      aria-label={`React with ${emoji}`}
+                      className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-slate-300 transition-colors hover:border-accent/50 hover:text-accent"
+                      key={emoji}
+                      onClick={() => onReaction?.(message.id, emoji)}
+                      type="button"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               )}
               {isOwn ? (
                 <span

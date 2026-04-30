@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { disconnectSocket } from '../services/socket';
 import { authApi } from '../services/authApi';
 import { handleApiError } from '../utils/handleApiError';
+import UserAvatar from './UserAvatar';
 
 const formatFileSize = (file) => `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
 
@@ -76,8 +77,6 @@ function SettingsModal({ isOpen, onClose }) {
     return null;
   }
 
-  const initials = (name || auth?.user?.name || 'U').trim().slice(0, 1).toUpperCase();
-
   const handleFileChange = (event) => {
     const nextFile = event.target.files?.[0] || null;
     setSelectedFile(nextFile);
@@ -126,21 +125,20 @@ function SettingsModal({ isOpen, onClose }) {
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/70 px-4 py-4 backdrop-blur-sm sm:items-center sm:py-6"
       onClick={onClose}
       role="dialog"
     >
-      <div className="glass-panel relative w-full max-w-2xl overflow-hidden" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="glass-panel relative flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden sm:max-h-[calc(100vh-3rem)]"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(17,197,138,0.25),transparent_52%),radial-gradient(circle_at_top_right,rgba(255,122,89,0.22),transparent_42%)]" />
 
-        <div className="relative border-b border-white/10 px-6 pb-5 pt-6">
+        <div className="relative shrink-0 border-b border-white/10 px-6 pb-5 pt-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.26em] text-accent">Settings</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Profile preferences</h2>
-              <p className="mt-2 max-w-xl text-sm text-slate-300">
-                Update how your profile appears across conversations. Your phone number stays locked to your account.
-              </p>
             </div>
             <button className="secondary-button px-3 py-2" onClick={onClose} type="button">
               Close
@@ -148,55 +146,54 @@ function SettingsModal({ isOpen, onClose }) {
           </div>
         </div>
 
-        <form className="relative grid gap-6 px-6 py-6 md:grid-cols-[220px,minmax(0,1fr)]" onSubmit={handleSubmit}>
-          <div className="glass-panel flex flex-col items-center gap-4 p-5">
-            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-[2rem] bg-accentSoft text-3xl font-bold uppercase text-accent">
-              {previewUrl ? (
-                <img alt={`${name || auth?.user?.name} profile`} className="h-full w-full object-cover" src={previewUrl} />
-              ) : (
-                initials
-              )}
-            </div>
-
-            <label className="secondary-button w-full cursor-pointer">
-              <input accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleFileChange} type="file" />
-              Choose photo
-            </label>
-
-            <p className="text-center text-xs text-slate-400">
-              Max size 5MB.
-            </p>
-
-            {selectedFile ? (
-              <div className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-3 text-xs text-slate-300">
-                <p className="truncate font-medium text-white">{selectedFile.name}</p>
-                <p className="mt-1">{formatFileSize(selectedFile)}</p>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white" htmlFor="settings-name">
-                Display name
-              </label>
-              <input
-                className="input-field"
-                id="settings-name"
-                maxLength={50}
-                minLength={2}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Enter your display name"
-                required
-                type="text"
-                value={name}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <form className="relative grid gap-6 px-6 py-6 md:grid-cols-[220px,minmax(0,1fr)]" onSubmit={handleSubmit}>
+            <div className="glass-panel flex flex-col items-center gap-4 p-5">
+              <UserAvatar
+                className="shadow-lg shadow-slate-950/30"
+                name={name || auth?.user?.name}
+                profilePic={previewUrl}
+                roundedClass="rounded-[2rem]"
+                size="2xl"
               />
+
+              <label className="secondary-button w-full cursor-pointer">
+                <input accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleFileChange} type="file" />
+                Choose photo
+              </label>
+
+              <p className="text-center text-xs text-slate-400">Max size 5MB.</p>
+
+              {selectedFile ? (
+                <div className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-3 text-xs text-slate-300">
+                  <p className="truncate font-medium text-white">{selectedFile.name}</p>
+                  <p className="mt-1">{formatFileSize(selectedFile)}</p>
+                </div>
+              ) : null}
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white" htmlFor="settings-phone">
-                Phone number
-              </label>
+            <div className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white" htmlFor="settings-name">
+                  Display name
+                </label>
+                <input
+                  className="input-field"
+                  id="settings-name"
+                  maxLength={50}
+                  minLength={2}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Enter your display name"
+                  required
+                  type="text"
+                  value={name}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white" htmlFor="settings-phone">
+                  Phone number
+                </label>
               <input
                 className="input-field cursor-not-allowed border-white/5 text-slate-400"
                 id="settings-phone"
@@ -206,47 +203,48 @@ function SettingsModal({ isOpen, onClose }) {
               />
             </div>
 
-            {error ? (
-              <div aria-live="polite" className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="alert">
-                {error}
-              </div>
-            ) : null}
-
-            <div className="rounded-[28px] border border-rose-500/30 bg-rose-500/10 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-300">Close My Account</p>
-              
-              {deleteError ? (
-                <div
-                  aria-live="polite"
-                  className="mt-4 rounded-2xl border border-rose-500/30 bg-slate-950/40 px-4 py-3 text-sm text-rose-200"
-                  role="alert"
-                >
-                  {deleteError}
+              {error ? (
+                <div aria-live="polite" className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="alert">
+                  {error}
                 </div>
               ) : null}
 
-              <button
-                className="mt-4 inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-rose-500/60 bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-400"
-                onClick={() => {
-                  setDeleteError('');
-                  setIsDeleteConfirmOpen(true);
-                }}
-                type="button"
-              >
-                Close My Account
-              </button>
-            </div>
+              <div className="rounded-[28px] border border-rose-500/30 bg-rose-500/10 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-300">Close My Account</p>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button className="primary-button" disabled={isSubmitting} type="submit">
-                {isSubmitting ? 'Saving...' : 'Save changes'}
-              </button>
-              <button className="secondary-button" onClick={onClose} type="button">
-                Cancel
-              </button>
+                {deleteError ? (
+                  <div
+                    aria-live="polite"
+                    className="mt-4 rounded-2xl border border-rose-500/30 bg-slate-950/40 px-4 py-3 text-sm text-rose-200"
+                    role="alert"
+                  >
+                    {deleteError}
+                  </div>
+                ) : null}
+
+                <button
+                  className="mt-4 inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-rose-500/60 bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-400"
+                  onClick={() => {
+                    setDeleteError('');
+                    setIsDeleteConfirmOpen(true);
+                  }}
+                  type="button"
+                >
+                  Close My Account
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button className="primary-button" disabled={isSubmitting} type="submit">
+                  {isSubmitting ? 'Saving...' : 'Save changes'}
+                </button>
+                <button className="secondary-button" onClick={onClose} type="button">
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
 
         {isDeleteConfirmOpen ? (
           <div
